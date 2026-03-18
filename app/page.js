@@ -267,6 +267,9 @@ export default function Home() {
         <div className="nav-logo">
           snap<span>shot</span>.api
         </div>
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/terms">Terms & Conditions</a>
+          <a href="/refund">Refund Policy</a>
         <p>Built with ☕ · © 2025</p>
       </footer>
     </>
