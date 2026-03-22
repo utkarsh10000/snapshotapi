@@ -5,7 +5,7 @@ import styles from './billing.module.css';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function BillingPage() {
-  const [loading, setLoading] = useState(null); // 'starter' | 'pro' | null
+  const [loading, setLoading] = useState(null);
   const [currentPlan, setCurrentPlan] = useState('free');
 
   useEffect(() => {
@@ -14,10 +14,12 @@ export default function BillingPage() {
     script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
     script.async = true;
     script.onload = () => {
-      // Initialize Paddle with your client token
-      window.Paddle.Initialize({
-        token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN
-      });
+      const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
+      if (token) {
+        window.Paddle.Initialize({ token });
+      } else {
+        console.error('Paddle client token is missing!');
+      }
     };
     document.body.appendChild(script);
 
@@ -29,7 +31,9 @@ export default function BillingPage() {
     }
 
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, []);
 
@@ -49,7 +53,6 @@ export default function BillingPage() {
       const data = await res.json();
 
       if (data.url) {
-        // Open Paddle embedded checkout popup
         window.Paddle.Checkout.open({
           url: data.url,
           settings: {
@@ -70,46 +73,46 @@ export default function BillingPage() {
   }
 
   return (
-    <div className={styles.billingPage}>
-      <h1>Billing & Plans</h1>
-      <p className={styles.subtitle}>Choose the plan that fits your needs</p>
+    <>
+      <div className={styles.header}>
+        <h1>Billing & Plans</h1>
+        <p>Choose the plan that fits your needs</p>
+      </div>
 
-      <div className={styles.plans}>
+      <div className={styles.pricingGrid}>
 
         {/* Free Plan */}
-        <div className={`${styles.planCard} ${currentPlan === 'free' ? styles.activePlan : ''}`}>
-          <div className={styles.planHeader}>
-            <h2>Free</h2>
-            {currentPlan === 'free' && <span className={styles.badge}>Current Plan</span>}
-          </div>
-          <p className={styles.price}>$0 <span>/month</span></p>
-          <ul>
+        <div className={`${styles.planCard} ${currentPlan === 'free' ? styles.current : ''}`}>
+          {currentPlan === 'free' && <span className={styles.currentBadge}>Current Plan</span>}
+          <div className={styles.planTier}>Free</div>
+          <div className={styles.planPrice}><sup>$</sup>0</div>
+          <div className={styles.planPeriod}>per month</div>
+          <ul className={styles.planFeatures}>
             <li>50 screenshots / month</li>
             <li>API key access</li>
             <li>Basic support</li>
           </ul>
-          <button disabled className={styles.disabledBtn}>
+          <button disabled className={styles.btnDisabled}>
             {currentPlan === 'free' ? 'Current Plan' : 'Downgrade'}
           </button>
         </div>
 
         {/* Starter Plan */}
-        <div className={`${styles.planCard} ${currentPlan === 'starter' ? styles.activePlan : ''}`}>
-          <div className={styles.planHeader}>
-            <h2>Starter</h2>
-            {currentPlan === 'starter' && <span className={styles.badge}>Current Plan</span>}
-          </div>
-          <p className={styles.price}>$9 <span>/month</span></p>
-          <ul>
+        <div className={`${styles.planCard} ${currentPlan === 'starter' ? styles.current : ''}`}>
+          {currentPlan === 'starter' && <span className={styles.currentBadge}>Current Plan</span>}
+          <div className={styles.planTier}>Starter</div>
+          <div className={styles.planPrice}><sup>$</sup>9</div>
+          <div className={styles.planPeriod}>per month</div>
+          <ul className={styles.planFeatures}>
             <li>500 screenshots / month</li>
             <li>API key access</li>
             <li>Priority support</li>
           </ul>
           {currentPlan === 'starter' ? (
-            <button disabled className={styles.disabledBtn}>Current Plan</button>
+            <button disabled className={styles.btnDisabled}>Current Plan</button>
           ) : (
             <button
-              className={styles.upgradeBtn}
+              className={styles.btnFilled}
               onClick={() => handleUpgrade('starter')}
               disabled={loading === 'starter'}
             >
@@ -119,24 +122,25 @@ export default function BillingPage() {
         </div>
 
         {/* Pro Plan */}
-        <div className={`${styles.planCard} ${currentPlan === 'pro' ? styles.activePlan : ''}`}>
-          <div className={styles.planHeader}>
-            <h2>Pro</h2>
-            {currentPlan === 'pro' && <span className={styles.badge}>Current Plan</span>}
-            <span className={styles.popularBadge}>Most Popular</span>
-          </div>
-          <p className={styles.price}>$29 <span>/month</span></p>
-          <ul>
+        <div className={`${styles.planCard} ${styles.popular} ${currentPlan === 'pro' ? styles.current : ''}`}>
+          {currentPlan === 'pro'
+            ? <span className={styles.currentBadge}>Current Plan</span>
+            : <span className={styles.popularBadge}>Most Popular</span>
+          }
+          <div className={styles.planTier}>Pro</div>
+          <div className={styles.planPrice}><sup>$</sup>29</div>
+          <div className={styles.planPeriod}>per month</div>
+          <ul className={styles.planFeatures}>
             <li>5,000 screenshots / month</li>
             <li>API key access</li>
             <li>Priority support</li>
             <li>Higher rate limits</li>
           </ul>
           {currentPlan === 'pro' ? (
-            <button disabled className={styles.disabledBtn}>Current Plan</button>
+            <button disabled className={styles.btnDisabled}>Current Plan</button>
           ) : (
             <button
-              className={styles.upgradeBtn}
+              className={styles.btnFilled}
               onClick={() => handleUpgrade('pro')}
               disabled={loading === 'pro'}
             >
@@ -146,6 +150,6 @@ export default function BillingPage() {
         </div>
 
       </div>
-    </div>
+    </>
   );
 }
