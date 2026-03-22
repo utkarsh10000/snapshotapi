@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import styles from './keys.module.css'
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
 export default function ApiKeys() {
   const [copied, setCopied] = useState(false)
   const [showRegen, setShowRegen] = useState(false)
@@ -26,7 +28,7 @@ export default function ApiKeys() {
     setRegenLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/auth/regen-key', {
+      const res = await fetch(`${BASE_URL}/api/auth/regen-key`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

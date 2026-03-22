@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import styles from './settings.module.css'
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
 export default function Settings() {
   const [user, setUser] = useState(null)
   const [displayName, setDisplayName] = useState('')
@@ -29,7 +31,6 @@ export default function Settings() {
 
   const handleSaveProfile = async () => {
     setProfileLoading(true)
-    // Will connect to backend later
     setTimeout(() => {
       setSavedProfile(true)
       setProfileLoading(false)
@@ -57,7 +58,7 @@ export default function Settings() {
 
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/auth/change-password', {
+      const res = await fetch(`${BASE_URL}/api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +91,7 @@ export default function Settings() {
   const handleDeleteAccount = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/auth/delete-account', {
+      const res = await fetch(`${BASE_URL}/api/auth/delete-account`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
