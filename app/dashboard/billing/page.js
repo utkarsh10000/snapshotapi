@@ -1,136 +1,151 @@
-'use client'
-import styles from './billing.module.css'
+'use client';
+import { useState, useEffect } from 'react';
+import styles from './billing.module.css';
 
-const plans = [
-  {
-    id: 'free',
-    name: 'Free',
-    price: 0,
-    period: 'forever free',
-    features: ['50 screenshots / month', '1280×720 resolution', 'PNG format', 'Community support'],
-  },
-  {
-    id: 'starter',
-    name: 'Starter',
-    price: 9,
-    period: 'per month',
-    popular: true,
-    features: ['500 screenshots / month', 'Full page capture', 'PNG + JPG formats', 'Email support'],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 29,
-    period: 'per month',
-    features: ['5000 screenshots / month', 'Mobile emulation', 'Priority support', 'Custom resolution'],
-  },
-]
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-export default function Billing() {
+export default function BillingPage() {
+  const [loading, setLoading] = useState(null); // 'starter' | 'pro' | null
+  const [currentPlan, setCurrentPlan] = useState('free');
 
-  // Dummy data — replace with real user data later
-  const currentPlan = 'free'
-  const billingHistory = [] // empty for free users
+  useEffect(() => {
+    // Load Paddle.js script
+    const script = document.createElement('script');
+    script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
+    script.async = true;
+    script.onload = () => {
+      // Initialize Paddle with your client token
+      window.Paddle.Initialize({
+        token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN
+      });
+    };
+    document.body.appendChild(script);
 
-  const handleUpgrade = (planId) => {
-    // We will connect Stripe here later
-    alert(`Stripe checkout for ${planId} plan coming soon!`)
+    // Get current plan from localStorage
+    const user = localStorage.getItem('user');
+    if (user) {
+      const parsed = JSON.parse(user);
+      setCurrentPlan(parsed.plan || 'free');
+    }
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  async function handleUpgrade(plan) {
+    setLoading(plan);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/billing/checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ plan })
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        // Open Paddle embedded checkout popup
+        window.Paddle.Checkout.open({
+          url: data.url,
+          settings: {
+            displayMode: 'overlay',
+            theme: 'dark',
+            successUrl: `${window.location.origin}/dashboard/billing?success=true`
+          }
+        });
+      } else {
+        alert('Something went wrong. Please try again.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error connecting to server.');
+    } finally {
+      setLoading(null);
+    }
   }
 
   return (
-    <>
-      {/* HEADER */}
-      <div className={styles.header}>
-        <h1>Billing</h1>
-        <p>Manage your plan and billing information.</p>
-      </div>
+    <div className={styles.billingPage}>
+      <h1>Billing & Plans</h1>
+      <p className={styles.subtitle}>Choose the plan that fits your needs</p>
 
-      {/* CURRENT PLAN BANNER */}
-      <div className={styles.currentPlan}>
-        <div>
-          <div className={styles.planTag}>Current plan</div>
-          <div className={styles.planName}>
-            {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
-            <span className={styles.activeBadge}>ACTIVE</span>
+      <div className={styles.plans}>
+
+        {/* Free Plan */}
+        <div className={`${styles.planCard} ${currentPlan === 'free' ? styles.activePlan : ''}`}>
+          <div className={styles.planHeader}>
+            <h2>Free</h2>
+            {currentPlan === 'free' && <span className={styles.badge}>Current Plan</span>}
           </div>
-          <div className={styles.planDetail}>
-            {currentPlan === 'free' && '50 screenshots / month · no credit card required'}
-            {currentPlan === 'starter' && '500 screenshots / month · billed monthly'}
-            {currentPlan === 'pro' && '5000 screenshots / month · billed monthly'}
-          </div>
+          <p className={styles.price}>$0 <span>/month</span></p>
+          <ul>
+            <li>50 screenshots / month</li>
+            <li>API key access</li>
+            <li>Basic support</li>
+          </ul>
+          <button disabled className={styles.disabledBtn}>
+            {currentPlan === 'free' ? 'Current Plan' : 'Downgrade'}
+          </button>
         </div>
-      </div>
 
-      {/* PRICING GRID */}
-      <div className={styles.pricingGrid}>
-        {plans.map((plan) => (
-          <div
-            key={plan.id}
-            className={`${styles.planCard} ${plan.popular ? styles.popular : ''} ${plan.id === currentPlan ? styles.current : ''}`}
-          >
-            {plan.popular && <div className={styles.popularBadge}>Most popular</div>}
-            {plan.id === currentPlan && <div className={styles.currentBadge}>Current plan</div>}
-
-            <div className={styles.planTier}>{plan.name}</div>
-            <div className={styles.planPrice}><sup>$</sup>{plan.price}</div>
-            <div className={styles.planPeriod}>{plan.period}</div>
-
-            <ul className={styles.planFeatures}>
-              {plan.features.map((f, i) => (
-                <li key={i}>{f}</li>
-              ))}
-            </ul>
-
-            {plan.id === currentPlan ? (
-              <button className={styles.btnDisabled} disabled>Current plan</button>
-            ) : (
-              <button
-                className={plan.popular ? styles.btnFilled : styles.btnGhost}
-                onClick={() => handleUpgrade(plan.id)}
-              >
-                Upgrade → ${plan.price}/mo
-              </button>
-            )}
+        {/* Starter Plan */}
+        <div className={`${styles.planCard} ${currentPlan === 'starter' ? styles.activePlan : ''}`}>
+          <div className={styles.planHeader}>
+            <h2>Starter</h2>
+            {currentPlan === 'starter' && <span className={styles.badge}>Current Plan</span>}
           </div>
-        ))}
-      </div>
+          <p className={styles.price}>$9 <span>/month</span></p>
+          <ul>
+            <li>500 screenshots / month</li>
+            <li>API key access</li>
+            <li>Priority support</li>
+          </ul>
+          {currentPlan === 'starter' ? (
+            <button disabled className={styles.disabledBtn}>Current Plan</button>
+          ) : (
+            <button
+              className={styles.upgradeBtn}
+              onClick={() => handleUpgrade('starter')}
+              disabled={loading === 'starter'}
+            >
+              {loading === 'starter' ? 'Loading...' : 'Upgrade to Starter'}
+            </button>
+          )}
+        </div>
 
-      {/* BILLING HISTORY */}
-      <div className={styles.card}>
-        <div className={styles.cardTitle}>Billing history</div>
-        <div className={styles.cardDesc}>Your past invoices and payments</div>
-
-        {billingHistory.length === 0 ? (
-          <div className={styles.emptyState}>
-            {currentPlan === 'free'
-              ? 'You are on the free plan — no billing history yet.'
-              : 'No invoices yet.'}
+        {/* Pro Plan */}
+        <div className={`${styles.planCard} ${currentPlan === 'pro' ? styles.activePlan : ''}`}>
+          <div className={styles.planHeader}>
+            <h2>Pro</h2>
+            {currentPlan === 'pro' && <span className={styles.badge}>Current Plan</span>}
+            <span className={styles.popularBadge}>Most Popular</span>
           </div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Plan</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Invoice</th>
-              </tr>
-            </thead>
-            <tbody>
-              {billingHistory.map((item, i) => (
-                <tr key={i}>
-                  <td>{item.date}</td>
-                  <td>{item.plan}</td>
-                  <td>${item.amount}</td>
-                  <td><span className={styles.paidBadge}>Paid</span></td>
-                  <td><a href={item.invoiceUrl} className={styles.invoiceLink}>Download</a></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+          <p className={styles.price}>$29 <span>/month</span></p>
+          <ul>
+            <li>5,000 screenshots / month</li>
+            <li>API key access</li>
+            <li>Priority support</li>
+            <li>Higher rate limits</li>
+          </ul>
+          {currentPlan === 'pro' ? (
+            <button disabled className={styles.disabledBtn}>Current Plan</button>
+          ) : (
+            <button
+              className={styles.upgradeBtn}
+              onClick={() => handleUpgrade('pro')}
+              disabled={loading === 'pro'}
+            >
+              {loading === 'pro' ? 'Loading...' : 'Upgrade to Pro'}
+            </button>
+          )}
+        </div>
+
       </div>
-    </>
-  )
+    </div>
+  );
 }
